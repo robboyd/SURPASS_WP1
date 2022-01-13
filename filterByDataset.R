@@ -10,14 +10,37 @@ library(rnaturalearthdata)
 
 ## load GBIF data
 
-dat <- read.csv("C:/Users/Rob.Lenovo-PC/Documents/surpass/Data/GBIF/07.04.21/bees.csv",
-                na.strings = c("", "NA"))
+files <- list.files("F:/GBIF_downloads_08.11.2021/", pattern = "bees_raw", full.names = T)
+
+dat <- lapply(files, read.csv, na.strings = c(NA, ""))
+
+dat <- do.call("rbind", dat)
+
+## drop records without coords
+
+dat <- dat[!is.na(dat$decimalLatitude), ]
+
+dat <- dat[!is.na(dat$decimalLongitude), ]
 
 ## drop records outside Chile
 
 dat$countryCode <-  countrycode(dat$countryCode, origin =  'iso2c', destination = 'iso3c')
 
-dat <- dat[dat$countryCode == "CHL", ]
+shp <- raster::shapefile("C:/Users/Rob.Lenovo-PC/Documents/surpass/Data/South America country boundaries/ne_110m_admin_0_countries/ne_110m_admin_0_countries.shp")
+
+shp <- shp[shp$NAME == "Chile", ]
+
+coordinates(dat) <- ~decimalLongitude+decimalLatitude
+
+proj4string(dat) <- CRS(proj4string(shp))
+
+dat <- dat[!is.na(over(dat, shp))[,1], ]
+
+dat <- data.frame(dat)
+
+plot(shp)
+
+points(dat[, c(23,22)])
 
 #dat <- dat[dat$family == "Apidae", ]
 
@@ -33,15 +56,6 @@ nrow(dat[dat$datasetKey != "3bccb697-4ccc-4d46-848a-79cb06946e5c"
 datPre <- dat[dat$datasetKey != "3bccb697-4ccc-4d46-848a-79cb06946e5c" 
               & dat$datasetKey != "ec4e6fa9-9bae-4e5b-af77-17cf0a1a6725", ]
 
-## drop records without coords
-
-dat <- dat[!is.na(dat$decimalLatitude), ]
-
-dat <- dat[!is.na(dat$decimalLongitude), ]
-
-datPre <- datPre[!is.na(datPre$decimalLatitude), ]
-
-datPre <- datPre[!is.na(datPre$decimalLongitude), ]
 
 #dat <- dat[dat$family == "Syrphidae", ]
 
@@ -65,7 +79,6 @@ dat <- dat[, c("species", "decimalLongitude", "decimalLatitude", "year", "coordi
 
 datPre <- datPre[, c("species", "decimalLongitude", "decimalLatitude", "year", "coordinateUncertaintyInMeters", "identifier", "countryCode")]
 
-
 ## clean the data
 
 cleanDat <- clean_coordinates(x = dat,
@@ -75,7 +88,7 @@ cleanDat <- clean_coordinates(x = dat,
                               species = "species",
                               countries = "countryCode",
                               tests = c("capitals", "centroids", "equal","gbif", "institutions",
-                                        "zeros", "countries"))
+                                        "zeros"))
 
 cleanDatPre <- clean_coordinates(x = datPre,
                               lon = "decimalLongitude",
@@ -84,7 +97,7 @@ cleanDatPre <- clean_coordinates(x = datPre,
                               species = "species",
                               countries = "countryCode",
                               tests = c("capitals", "centroids", "equal","gbif", "institutions",
-                                        "zeros", "countries"))
+                                        "zeros"))
 
 ## number of records with no spatial issues
 

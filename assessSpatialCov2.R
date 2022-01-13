@@ -84,7 +84,7 @@ assessSpatialCov2 <- function (dat, res, logCount = FALSE, countries = NULL, shp
     periods 
     sampled"
   }
-  myCol <- rgb(255, 255, 255, max = 255, alpha = 125, names = "blue50")
+  myCol <- rgb(255, 255, 255, max = 255, alpha = 0, names = "blue50")
   out <- lapply(as.character(unique(dat$identifier)), function(x) {
     if (is.list(countries) & !any(!countries %in% unique(ggplot2::map_data("world")$region)) | 
         !is.list(countries) & !is.null(countries) & !any(!countries %in% 

@@ -5,21 +5,23 @@ library(raster)
 library(gridExtra)
 library(ggplot2)
 library(colorRamps)
+library(RColorBrewer)
 
-x <- read.csv("C:/Users/Rob.Lenovo-PC/Documents/surpass/Data/GBIF/07.04.21/cleanedData.csv")
+x <- read.csv("F:/GBIF_downloads_08.11.2021/bees_clean.csv")
 
-y <- read.csv("C:/Users/Rob.Lenovo-PC/Documents/surpass/Data/GBIF/07.04.21/cleanedDataAnthophila.csv")
+y <- read.csv("F:/GBIF_downloads_08.11.2021/bats_clean.csv")
 
-z <- read.csv("C:/Users/Rob.Lenovo-PC/Documents/surpass/Data/GBIF/07.04.21/cleanedDataHummingBirds.csv")
+z <- read.csv("F:/GBIF_downloads_08.11.2021/hoverflies_clean.csv")
 
-spDat <- rbind(x, y, z)
+load("F:/GBIF_downloads_08.11.2021/hummingbirds_clean.rdata")
+
+spDat <- rbind(x[,1:6], y[,1:6], z[,1:6], dat[,1:6])
 
 periods <- list(1950:1959, 1960:1969, 1970:1979, 1980:1989, 1990:1999, 2000:2009, 2010:2019)
 
 countries = c("Brazil", "Argentina", "Chile", "Colombia", "Ecuador", "Bolivia", "Uruguay", 
               "Venezuela", "Guayana", "Paraguay", "Peru", "Suriname", "Mexico")
 
-#### Periods
 
 clim <- raster::stack(list.files("C:/Users/Rob.Lenovo-PC/Documents/surpass/Data/bio/bio/",
                                  full.names = T)) # my local version (19 raster layers)
@@ -38,52 +40,41 @@ clim <- raster::crop(clim, raster::extent(shp))
 
 clim <- raster::mask(clim, shp)
 
-## exract climate data at coordinates of occurrence data 
-
-envDat <- raster::extract(clim, spDat[, c("x", "y")])
-
-## extract background environmental data 
-
-backgroundEnvDat <- raster::sampleRandom(clim, size = 10000,
-                                         xy = F)
-
 ### Functions
-
-length(unique(spDat$species[spDat$identifier == "Trochilidae" & !is.na(spDat$species)]))
 
 rarityBias <- assessRarityBias(dat = spDat,
                            periods = periods,
                            res = 1,
-                          prevPerPeriod = F)
+                          prevPerPeriod = T,
+                          species = "species",
+                          year = "year",
+                          x = "x",
+                          y = "y",
+                          spatialUncertainty = "spatialUncertainty",
+                          identifier = "identifier")
 
-pRarity <- rarityBias$plot + 
-  ylim(c(0, 1))
 
-pRarity
 
 nRec <- assessRecordNumber(dat = spDat,
-                           periods = periods)
+                           periods = periods,
+                           species = "species",
+                           year = "year",
+                           x = "x",
+                           y = "y",
+                           spatialUncertainty = "spatialUncertainty",
+                           identifier = "identifier",
+                           normalize = T)
 
-pNRec <- nRec$plot 
-
-pNRec
 
 nSpec <- assessSpeciesNumber(dat = spDat,
-                           periods = periods)
-
-pNSpec <- nSpec$plot 
-
-pNSpec
-
-propID <- assessSpeciesID(dat = spDat,
                            periods = periods,
-                           type = "proportion")
+                           species = "species",
+                           year = "year",
+                           x = "x",
+                           y = "y",
+                           spatialUncertainty = "spatialUncertainty",
+                           identifier = "identifier")
 
-pPropID<- propID$plot + 
-  ylim(c(0,1)) +
-  ggtitle("C)")
-
-pPropID
 
 map <- assessSpatialCov2(dat = spDat,
                  res = 1,
@@ -93,74 +84,64 @@ map <- assessSpatialCov2(dat = spDat,
                  output = "nPeriods",
                  minPeriods = 5,
                  shp=NULL)
-map$Anthophila
+
 
 countries = c("Brazil", "Argentina", "Chile", "Colombia", "Ecuador", "Bolivia", "Uruguay", 
               "Venezuela",  "Paraguay", "Peru", "Suriname", "Mexico", "Panama", "Costa Rica", "Honduras",
               "Nicaragua", "Belize", "El Salvador", "Guatemala", "Cuba", "Dominican Republic")
 
-pMap1 <- map$Phyllostomidae +
-  xlim(c(-90, -30)) + 
-  ggtitle("Ei)")
-assessSpatialCov
-pMap2 <- map$Syrphidae +
-  xlim(c(-90, -30)) +
-  ggtitle("Eii)")
-
-pMap3 <- map$Apoidae +
-  xlim(c(-90, -30)) +
-  ggtitle("Eiii)")
-
-pMap4 <- map$Trochilidae +
-  xlim(c(-90, -30)) +
-  ggtitle("Eiv)")
-
 #mask <- raster::raster("C:/Users/Rob.Lenovo-PC/Documents/surpass/Data/occAssessData/climSA.asc")
 
 mask <- clim[[1]]
 
+mask <- disaggregate(mask, fact = 5)
+
 spatBias <- assessSpatialBias(dat = spDat,
                               periods = periods,
                               mask = mask,
-                              nSamps = 30,
-                              degrade = TRUE)
-
-pSpatBias <- spatBias$plot + 
-  ylim(c(0, 1)) 
-
-pSpatBias
-envBias <- assessEnvBias(dat = spDat,
-                         envDat = envDat,
-                         backgroundEnvDat = backgroundEnvDat,
-                         periods = periods,
-                         xPC = 1,
-                         yPC = 2)
+                              nSamps = 15,
+                              degrade = TRUE,
+                              species = "species",
+                              year = "year",
+                              x = "x",
+                              y = "y",
+                              spatialUncertainty = "spatialUncertainty",
+                              identifier = "identifier")
 
 
-pEnvDat <- envBias 
+myCol <- rgb(255,255,255, max = 255, alpha = 0, names = "blue50")
 
-png("allPlots.png", width = 16, height = 12, units = "in", res = 600)
-grid.arrange(pNRec, pNSpec, pPropID, pRarity, pMap1, pMap2, pSpatBias, pEnvDat, ncol = 3)
-dev.off()
-
-png("rarity.png", width = 7, height = 4, units = "in", res = 600)
-print(pRar)
-dev.off()
-
-png("mapAnthophila.png", width = 10, height = 10, units = "in", res = 600)
-print(map$Anthophila)
-dev.off()
-
-png("mainFig.png", width = 13, height = 7.4, units = "in", res = 500)
+png("mainFig.png", width = 12, height = 7.4, units = "in", res = 500)
 grid.arrange(
-  nRec$plot + xlab("") + ggtitle("A") + scale_color_manual(values=matlab.like2(4)),
-  nSpec$plot + xlab("") + ggtitle("B") + scale_color_manual(values=matlab.like2(4)), 
-  rarityBias$plot + ggtitle("C") + scale_color_manual(values=matlab.like2(4)), 
-  spatBias$plot + ggtitle("D") + scale_color_manual(values=matlab.like2(4)) + scale_fill_manual(values = matlab.like2(4)),
-  map[[3]] +  ggtitle("E) Anthophila"),
-  map[[2]] +  ggtitle("F) Syrphidae"),
-  map[[1]] +  ggtitle("G) Phyllostomidae"),
-  map[[4]] +  ggtitle("H) Trochilidae"),
+  nRec$plot + xlab("") + ggtitle("A") + scale_color_manual(values=brewer.pal(4, "Dark2")) + theme(legend.position = "none") +
+    ylab("Number of records 
+    (normalized)"),
+  nSpec$plot + xlab("") + ggtitle("B") + scale_color_manual(values=brewer.pal(4, "Dark2")) + theme(legend.position = "none") + 
+    aes(y = val/c(rep(5000, 7), rep(160, 7), rep(2000, 7), rep(361, 7))) + ylab("Prop. species"), 
+  rarityBias$plot + ggtitle("C") + scale_color_manual(values=brewer.pal(4, "Dark2")) + 
+    theme(legend.position = "none") + 
+    xlab(""), 
+  spatBias$plot + ggtitle("D") + scale_color_manual(values=brewer.pal(4, "Dark2")) + 
+    scale_fill_manual(values = brewer.pal(4, "Dark2")) + 
+    theme(legend.position = "none") +
+    xlab("Decade"),
+  map[[1]] +  ggtitle("E) Anthophila") + 
+    ggplot2::scale_fill_manual(values = brewer.pal(7, "BuPu"), na.value = myCol, name = "", 
+                               na.translate = FALSE) +
+    theme(legend.position = "none") + xlab("") + xlab("") + ylab(""),
+  map[[3]] +  ggtitle("F) Syrphidae") + 
+    ggplot2::scale_fill_manual(values = brewer.pal(7, "BuPu"), na.value = myCol, name = "", 
+                               na.translate = FALSE) +
+    theme(legend.position = "none") + xlab("") + xlab("") + ylab(""),
+  map[[2]] +  ggtitle("G) Phyllostomidae") + 
+    ggplot2::scale_fill_manual(values = brewer.pal(7, "BuPu"), na.value = myCol, name = "", 
+                               na.translate = FALSE) +
+    theme(legend.position = "none") + xlab("") + ylab(""),
+  map[[4]] +  ggtitle("H) Trochilidae") + 
+    ggplot2::scale_fill_manual(values = brewer.pal(7, "BuPu"), na.value = myCol, name = "", 
+                               na.translate = FALSE) +
+    theme(legend.position = c(0.2, 0.4),
+          legend.background = element_rect(colour ="black")) + xlab("") + ylab(""),
   widths = c(1, 1.2, 1.2),
   layout_matrix = rbind(c(1, 5, 7),
                         c(2, 5, 7),
@@ -170,8 +151,5 @@ grid.arrange(
 dev.off()
 
 
-x <- assessTaxonBias(dat = spDat,
-                periods = periods, 
-                minRecs = 1)
 
 

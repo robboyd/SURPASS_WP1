@@ -7,16 +7,23 @@ library(ggplot2)
 library(rgbif)
 library(sp)
 library(rnaturalearthdata)
+library(rgdal)
+library(rgeos)
 
 ## load GBIF data
 
-dat <- read.csv("C:/Users/Rob.Lenovo-PC/Documents/surpass/Data/GBIF/07.04.21/bees.csv",
+dat <- read.csv("F:/GBIF_downloads_08.11.2021/bats_raw.csv",
                 na.strings = c("", "NA"))
-unique(dat$family)
-dat$countryCode <-  countrycode(dat$countryCode, origin =  'iso2c', destination = 'iso3c')
 
+files <- list.files("F:/GBIF_downloads_08.11.2021/", pattern = "hummingbirds_", full.names = T)
 
-dat <- dat[dat$family == "Apidae", ]
+dat <- lapply(files, read.csv)
+
+dat <- do.call("rbind", dat)
+
+dat$countryCode <- countrycode(dat$countryCode, origin =  'iso2c', destination = 'iso3c')
+
+#dat <- dat[dat$family == "Apidae", ]
 
 nrow(dat[dat$countryCode == "CHL", ])
 
@@ -33,7 +40,7 @@ dat <- dat[!is.na(dat$decimalLongitude), ]
 
 ## add identifier field for occAssess
 
-dat$identifier <- "Anthophila"
+dat$identifier <- "Trochilidae"
 
 #dat$identifier <- dat$countryCode
 
@@ -43,9 +50,29 @@ dat$identifier <- "Anthophila"
 
 dat <- dat[, c("species", "decimalLongitude", "decimalLatitude", "year", "coordinateUncertaintyInMeters", "identifier", "countryCode")]
 
+## drop data not in South and Central America 
+
+shp <- raster::shapefile("C:/Users/Rob.Lenovo-PC/Documents/surpass/Data/South America country boundaries/ne_110m_admin_0_countries/ne_110m_admin_0_countries.shp")
+
+shp <- shp[shp$CONTINENT %in% c("South America", "North America"), ]
+
+shp <- shp[!shp$NAME %in% c("United States of America", "Canada", "Greenland"), ]
+
+coordinates(dat) <- ~decimalLongitude+decimalLatitude
+
+proj4string(dat) <- CRS(proj4string(shp))
+
+dat <- dat[!is.na(over(dat, shp))[,1], ]
+
+dat <- data.frame(dat)
+
+plot(shp)
+
+points(dat[,2:3])
+
 ## clean the data
 
-cleanDat <- clean_coordinates(x = dat,
+dat <- clean_coordinates(x = dat,
                               lon = "decimalLongitude",
                               lat = "decimalLatitude",
                               value = "clean",
@@ -54,16 +81,18 @@ cleanDat <- clean_coordinates(x = dat,
                               tests = c("capitals", "centroids", "equal","gbif", "institutions",
                                         "zeros", "countries"))
 
-nrow(cleanDat[cleanDat$countryCode == "CHL", ])
+nrow(dat)
 
-length(unique(cleanDat$species))
+length(unique(dat$species))
 
-cleanDat <- cleanDat[, -7]
+dat <- dat[, -7]
 
-colnames(cleanDat) <- c("species", "x", "y", "year", "spatialUncertainty", "identifier")
+colnames(dat) <- c("species", "x", "y", "year", "spatialUncertainty", "identifier")
 
 write.csv(cleanDat,
-          "C:/Users/Rob.Lenovo-PC/Documents/surpass/Data/GBIF/07.04.21/cleanedDataAnthophila.csv",
+          "F:/GBIF_downloads_08.11.2021/bees_clean.csv",
           row.names = F)
+
+save(dat, file = "F:/GBIF_downloads_08.11.2021/hummingbirds_clean.rdata")
 
 
