@@ -13,7 +13,7 @@ y <- read.csv("F:/GBIF_downloads_08.11.2021/bats_clean.csv")
 
 z <- read.csv("F:/GBIF_downloads_08.11.2021/hoverflies_clean.csv")
 
-load("F:/GBIF_downloads_08.11.2021/hummingbirds_clean.rdata")
+load("F:/GBIF_downloads_08.11.2021/hummingbirds_clean_18_01_2022.rdata")
 
 spDat <- rbind(x[,1:6], y[,1:6], z[,1:6], dat[,1:6])
 
