@@ -12,23 +12,23 @@ library(rgeos)
 
 ## load GBIF data
 
-dat <- read.csv("F:/GBIF_downloads_08.11.2021/bats_raw.csv",
-                na.strings = c("", "NA"))
+#dat <- read.csv("F:/GBIF_downloads_08.11.2021/bats_raw.csv",
+#                na.strings = c("", "NA"))
 
-files <- list.files("F:/GBIF_downloads_08.11.2021/", pattern = "hummingbirds_", full.names = T)
+#files <- list.files("F:/GBIF_downloads_08.11.2021/", pattern = "hummingbirds_", full.names = T)
 
-dat <- lapply(files, read.csv)
+#dat <- lapply(files, read.csv)
 
-dat <- do.call("rbind", dat)
+#dat <- do.call("rbind", dat)
+
+load("F:/humm_redownload/humm_all.rdata")
+
+dat <- out 
 
 dat$countryCode <- countrycode(dat$countryCode, origin =  'iso2c', destination = 'iso3c')
 
-#dat <- dat[dat$family == "Apidae", ]
-
-nrow(dat[dat$countryCode == "CHL", ])
-
-nrow(dat[dat$countryCode == "CHL" & dat$datasetKey != "3bccb697-4ccc-4d46-848a-79cb06946e5c" 
-         & dat$datasetKey != "ec4e6fa9-9bae-4e5b-af77-17cf0a1a6725", ])
+#nrow(dat[dat$countryCode == "CHL" & dat$datasetKey != "3bccb697-4ccc-4d46-848a-79cb06946e5c" 
+#         & dat$datasetKey != "ec4e6fa9-9bae-4e5b-af77-17cf0a1a6725", ])
 
 ## drop records without coords
 
@@ -93,6 +93,6 @@ write.csv(cleanDat,
           "F:/GBIF_downloads_08.11.2021/bees_clean.csv",
           row.names = F)
 
-save(dat, file = "F:/GBIF_downloads_08.11.2021/hummingbirds_clean.rdata")
+save(dat, file = "F:/GBIF_downloads_08.11.2021/hummingbirds_clean_18_01_2022.rdata")
 
 
